@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  cloudlens-sensor:
+  - apiVersion: v2
+    appVersion: 6.13.0-359
+    created: "2026-01-13T09:47:22.488836-05:00"
+    description: A Helm chart for deploying CloudLens sensor in a Kubernetes cluster
+    digest: 4cc7516a280ec5d7f70c0166bb0f957f7b58c1549652fed363343aa81b3b654a
+    name: cloudlens-sensor
+    type: application
+    urls:
+    - https://keysight.github.io/cloudlens-helm/cloudlens-sensor-6.13.0-359.tgz
+    version: 6.13.0-359
+generated: "2026-01-13T09:47:22.488375-05:00"
