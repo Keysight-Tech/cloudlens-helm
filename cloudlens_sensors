@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudLens Architecture - Multi-SE Training Labs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header Section */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .deployment-info {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .info-badge {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: white;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Control Panel */
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .control-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Main Diagram Container */
+        .diagram-wrapper {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            position: relative;
+        }
+
+        .diagram {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto 1fr;
+            gap: 60px;
+            min-height: 800px;
+        }
+
+        /* Management Plane */
+        .management-plane {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 30px;
+            border: 2px solid #e1e8ed;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        }
+
+        .plane-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plane-icon {
+            width: 24px;
+            height: 24px;
+            background: #9b59b6;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+        }
+
+        /* Columns */
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .column-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .column-title {
+            font-size: 1em;
+            font-weight: 700;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .column-subtitle {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        /* Node Styles */
+        .node {
+            background: white;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+            border-color: #3498db;
+        }
+
+        /* OS-specific colors */
+        .node.ubuntu {
+            border-left: 4px solid #E95420;
+        }
+
+        .node.rhel {
+            border-left: 4px solid #EE0000;
+        }
+
+        .node.windows {
+            border-left: 4px solid #0078D4;
+        }
+
+        .node.clms {
+            border-left: 4px solid #9b59b6;
+            background: linear-gradient(135deg, #f5f7fa 0%, #f0e6f6 100%);
+        }
+
+        .node.vpb {
+            border-left: 4px solid #e74c3c;
+            background: linear-gradient(135deg, #f5f7fa 0%, #fce8e6 100%);
+        }
+
+        .node.tool {
+            border-left: 4px solid #27ae60;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+        }
+
+        /* Node Header */
+        .node-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .os-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .os-icon.ubuntu { background: linear-gradient(135deg, #E95420, #dd4814); }
+        .os-icon.rhel { background: linear-gradient(135deg, #EE0000, #cc0000); }
+        .os-icon.windows { background: linear-gradient(135deg, #0078D4, #0063b1); }
+        .os-icon.clms { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .os-icon.vpb { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .os-icon.tool { background: linear-gradient(135deg, #27ae60, #229954); }
+
+        .node-title-group {
+            flex: 1;
+        }
+
+        .node-title {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1.05em;
+            margin-bottom: 2px;
+        }
+
+        .node-subtitle {
+            font-size: 0.8em;
+            color: #95a5a6;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            background: #27ae60;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(39, 174, 96, 0);
+            }
+        }
+
+        /* Node Details */
+        .node-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            color: #5a6c7d;
+        }
+
+        .detail-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.6;
+        }
+
+        /* Sensor Section */
+        .sensor-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e1e8ed;
+        }
+
+        .sensor-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+        }
+
+        .sensor-badge::before {
+            content: "⚡";
+            font-size: 1.1em;
+        }
+
+        .sensor-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sensor-detail {
+            font-size: 0.75em;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sensor-detail::before {
+            content: "→";
+            color: #3498db;
+            font-weight: 700;
+        }
+
+        /* Traffic Flow Metrics */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .metric-label {
+            font-size: 0.7em;
+            color: #95a5a6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* SVG Flow Lines */
+        .flow-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .flow-line {
+            fill: none;
+            stroke: #3498db;
+            stroke-width: 3;
+            opacity: 0.3;
+        }
+
+        .control-line {
+            fill: none;
+            stroke: #9b59b6;
+            stroke-width: 2;
+            stroke-dasharray: 8, 4;
+            opacity: 0.4;
+        }
+
+        /* Animated Particles */
+        .particle {
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #3498db, #2980b9);
+            border-radius: 50%;
+            position: absolute;
+            z-index: 1;
+            box-shadow: 0 0 12px rgba(52, 152, 219, 0.8);
+        }
+
+        .particle.control {
+            background: radial-gradient(circle, #9b59b6, #8e44ad);
+            box-shadow: 0 0 12px rgba(155, 89, 182, 0.8);
+        }
+
+        /* Protocol Labels */
+        .protocol-label {
+            position: absolute;
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 600;
+            z-index: 3;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Legend */
+        .legend {
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .legend-title {
+            font-size: 1em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .legend-icon {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .legend-icon.ubuntu { background: #E95420; }
+        .legend-icon.rhel { background: #EE0000; }
+        .legend-icon.windows { background: #0078D4; }
+        .legend-icon.clms { background: #9b59b6; }
+        .legend-icon.vpb { background: #e74c3c; }
+        .legend-icon.tool { background: #27ae60; }
+
+        .legend-icon.line {
+            height: 3px;
+            background: #3498db;
+        }
+
+        .legend-icon.control {
+            height: 2px;
+            background: repeating-linear-gradient(
+                to right,
+                #9b59b6 0px,
+                #9b59b6 8px,
+                transparent 8px,
+                transparent 12px
+            );
+        }
+
+        .legend-text {
+            font-size: 0.85em;
+            color: #2c3e50;
+        }
+
+        /* Deployment Stats */
+        .deployment-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #3498db;
+        }
+
+        .tooltip-content {
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .diagram {
+                gap: 40px;
+            }
+
+            .deployment-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .diagram {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .management-plane {
+                grid-column: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>CloudLens Network Visibility Architecture</h1>
+            <p>Agent-Based Traffic Capture & Analysis Platform</p>
+            <div class="deployment-info">
+                <div class="info-badge">🏢 Multi-SE Training Lab</div>
+                <div class="info-badge">☁️ AWS us-west-2</div>
+                <div class="info-badge">🎯 15-20 Isolated Environments</div>
+                <div class="info-badge">⚡ Production-Ready</div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <button class="control-btn" onclick="toggleAnimation()">⏸️ Pause Animation</button>
+        </div>
+
+        <!-- Deployment Stats -->
+        <div class="deployment-stats">
+            <div class="stat-card">
+                <div class="stat-value">6</div>
+                <div class="stat-label">Instances per Lab</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Sensor-Enabled VMs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3</div>
+                <div class="stat-label">OS Platforms</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10Gbps</div>
+                <div class="stat-label">Max Throughput</div>
+            </div>
+        </div>
+
+        <!-- Main Diagram -->
+        <div class="diagram-wrapper">
+            <div class="diagram" id="diagram">
+                <svg class="flow-svg" id="flowSvg"></svg>
+
+                <!-- Management Plane -->
+                <div class="management-plane">
+                    <div class="plane-title">
+                        <div class="plane-icon">🎛️</div>
+                        Control Plane - Sensor Management
+                    </div>
+
+                    <div class="node clms" id="clms">
+                        <div class="node-header">
+                            <div class="os-icon clms">CL</div>
+                            <div class="node-title-group">
+                                <div class="node-title">CloudLens Manager</div>
+                                <div class="node-subtitle">CLMS - Management & Orchestration</div>
+                            </div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div class="node-details">
+                            <div class="detail-row">
+                                <span>📡</span>
+                                <span>Interface: eth0 → 10.X.1.106</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>🌐</span>
+                                <span>HTTPS UI: Port 443</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>🔧</span>
+                                <span>Sensor Configuration & Control</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>📊</span>
+                                <span>Policy Management & Analytics</span>
+                            </div>
+                        </div>
+                        <div class="metrics">
+                            <div class="metric">
+                                <div class="metric-value">3</div>
+                                <div class="metric-label">Active Sensors</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">t3.xlarge</div>
+                                <div class="metric-label">Instance Type</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Plane Column 1: Source VMs with Sensors -->
+                <div class="column">
+                    <div class="column-header">
+                        <div class="column-title">Source Workloads</div>
+                        <div class="column-subtitle">VPC: 10.X.0.0/16 • Subnet: 10.X.1.0/24</div>
+                    </div>
+
+                    <!-- Ubuntu Server -->
+                    <div class="node ubuntu" id="vm1"
+                         data-tooltip="Ubuntu 22.04 LTS running Apache web server and iPerf3. CloudLens sensor captures all network traffic via eBPF kernel hooks and forwards to vPB using VXLAN encapsulation.">
+                        <div class="node-header">
+                            <div class="os-icon ubuntu">🐧</div>
+                            <div class="node-title-group">
+                                <div class="node-title">Ubuntu Server</div>
+                                <div class="node-subtitle">Ubuntu 22.04 LTS</div>
+                            </div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div class="node-details">
+                            <div class="detail-row">
+                                <span>📡</span>
+                                <span>eth0: 10.X.1.10 (Apache)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>⚙️</span>
+                                <span>Services: Apache2, iPerf3:5201</span>
+                            </div>
+                        </div>
+                        <div class="sensor-section">
+                            <div class="sensor-badge">CloudLens Sensor v6.13.0</div>
+                            <div class="sensor-details">
+                                <div class="sensor-detail">Kernel: eBPF hooks</div>
+                                <div class="sensor-detail">Capture: Layer 2-7</div>
+                                <div class="sensor-detail">Encap: VXLAN (4789)</div>
+                                <div class="sensor-detail">Target: vPB 10.X.2.67</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RHEL Server -->
+                    <div class="node rhel" id="vm2"
+                         data-tooltip="Red Hat Enterprise Linux 9 running Apache HTTP server. Enterprise-grade sensor with advanced filtering and zero-packet-drop guarantee.">
+                        <div class="node-header">
+                            <div class="os-icon rhel">🎩</div>
+                            <div class="node-title-group">
+                                <div class="node-title">RHEL Server</div>
+                                <div class="node-subtitle">Red Hat Enterprise Linux 9</div>
+                            </div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div class="node-details">
+                            <div class="detail-row">
+                                <span>📡</span>
+                                <span>eth0: 10.X.1.30 (Apache)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>⚙️</span>
+                                <span>Services: httpd, iPerf3:5203</span>
+                            </div>
+                        </div>
+                        <div class="sensor-section">
+                            <div class="sensor-badge">CloudLens Sensor v6.13.0</div>
+                            <div class="sensor-details">
+                                <div class="sensor-detail">Kernel: Module + eBPF</div>
+                                <div class="sensor-detail">Capture: Smart sampling</div>
+                                <div class="sensor-detail">Encap: VXLAN (4789)</div>
+                                <div class="sensor-detail">Target: vPB 10.X.2.67</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Windows Server -->
+                    <div class="node windows" id="vm3"
+                         data-tooltip="Windows Server 2022 with IIS. Sensor uses Windows Filtering Platform (WFP) and NDIS drivers for native packet capture without performance impact.">
+                        <div class="node-header">
+                            <div class="os-icon windows">⊞</div>
+                            <div class="node-title-group">
+                                <div class="node-title">Windows Server</div>
+                                <div class="node-subtitle">Windows Server 2022</div>
+                            </div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div class="node-details">
+                            <div class="detail-row">
+                                <span>📡</span>
+                                <span>Ethernet: 10.X.1.40 (IIS)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>⚙️</span>
+                                <span>Services: IIS 10.0, RDP:3389</span>
+                            </div>
+                        </div>
+                        <div class="sensor-section">
+                            <div class="sensor-badge">CloudLens Sensor v6.13.0</div>
+                            <div class="sensor-details">
+                                <div class="sensor-detail">Driver: WFP + NDIS</div>
+                                <div class="sensor-detail">Capture: Layer 2-7</div>
+                                <div class="sensor-detail">Encap: VXLAN (4789)</div>
+                                <div class="sensor-detail">Target: vPB 10.X.2.67</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Plane Column 2: vPB -->
+                <div class="column" style="justify-content: center;">
+                    <div class="column-header">
+                        <div class="column-title">Packet Broker</div>
+                        <div class="column-subtitle">Traffic Aggregation & Forwarding</div>
+                    </div>
+
+                    <div class="node vpb" id="vpb"
+                         data-tooltip="Virtual Packet Broker aggregates traffic from all sensors, performs deduplication, filtering, and load balancing before forwarding to analysis tools.">
+                        <div class="node-header">
+                            <div class="os-icon vpb">📦</div>
+                            <div class="node-title-group">
+                                <div class="node-title">Virtual Packet Broker</div>
+                                <div class="node-subtitle">vPB - Traffic Orchestration</div>
+                            </div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div class="node-details">
+                            <div class="detail-row">
+                                <span>🔧</span>
+                                <span>mgmt0: 10.X.1.228 (Management)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>📥</span>
+                                <span>eth1: 10.X.2.67 (Ingress)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>📤</span>
+                                <span>eth2: 10.X.3.78 (Egress)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>⚡</span>
+                                <span>Processing: Dedup, Filter, Load Balance</span>
+                            </div>
+                        </div>
+                        <div class="metrics">
+                            <div class="metric">
+                                <div class="metric-value">3</div>
+                                <div class="metric-label">Input Sources</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">10Gbps</div>
+                                <div class="metric-label">Throughput</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">VXLAN</div>
+                                <div class="metric-label">Protocol</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">t3.xlarge</div>
+                                <div class="metric-label">Instance Type</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Plane Column 3: Analysis Tool -->
+                <div class="column" style="justify-content: center;">
+                    <div class="column-header">
+                        <div class="column-title">Analysis</div>
+                        <div class="column-subtitle">Traffic Monitoring & Forensics</div>
+                    </div>
+
+                    <div class="node tool" id="tool"
+                         data-tooltip="Analysis tool VM pre-configured with Wireshark, tcpdump, tshark for deep packet inspection and traffic analysis. Receives deduplicated traffic from vPB.">
+                        <div class="node-header">
+                            <div class="os-icon tool">🔍</div>
+                            <div class="node-title-group">
+                                <div class="node-title">Analysis Tool VM</div>
+                                <div class="node-subtitle">Ubuntu 22.04 + Monitoring Tools</div>
+                            </div>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div class="node-details">
+                            <div class="detail-row">
+                                <span>📡</span>
+                                <span>eth0: 10.X.3.239</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>🔍</span>
+                                <span>Tools: Wireshark, tcpdump, tshark</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>📊</span>
+                                <span>Analysis: Deep Packet Inspection</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>💾</span>
+                                <span>Storage: /home/ubuntu/captures/</span>
+                            </div>
+                        </div>
+                        <div class="metrics">
+                            <div class="metric">
+                                <div class="metric-value">Live</div>
+                                <div class="metric-label">Capture Mode</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">t3.medium</div>
+                                <div class="metric-label">Instance Type</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <div class="legend-title">🎨 Architecture Legend</div>
+                <div class="legend-grid">
+                    <div class="legend-item">
+                        <div class="legend-icon ubuntu"></div>
+                        <div class="legend-text">Ubuntu Server (eBPF Sensor)</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon rhel"></div>
+                        <div class="legend-text">RHEL Server (Kernel Module)</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon windows"></div>
+                        <div class="legend-text">Windows Server (WFP Driver)</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon clms"></div>
+                        <div class="legend-text">CloudLens Manager</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon vpb"></div>
+                        <div class="legend-text">Virtual Packet Broker</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon tool"></div>
+                        <div class="legend-text">Analysis Tool VM</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon line"></div>
+                        <div class="legend-text">Data Plane (VXLAN Traffic)</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon control"></div>
+                        <div class="legend-text">Control Plane (Management)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip element -->
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-title"></div>
+        <div class="tooltip-content"></div>
+    </div>
+
+    <script>
+        const svg = document.getElementById('flowSvg');
+        const diagram = document.getElementById('diagram');
+        const tooltip = document.getElementById('tooltip');
+        let particles = [];
+        let protocolLabels = [];
+        let animationPaused = false;
+
+        function updateSVGSize() {
+            const rect = diagram.getBoundingClientRect();
+            svg.setAttribute('width', rect.width);
+            svg.setAttribute('height', rect.height);
+        }
+
+        function getElementCenter(id) {
+            const el = document.getElementById(id);
+            const rect = el.getBoundingClientRect();
+            const containerRect = diagram.getBoundingClientRect();
+            return {
+                x: rect.left - containerRect.left + rect.width / 2,
+                y: rect.top - containerRect.top + rect.height / 2,
+                right: rect.right - containerRect.left,
+                left: rect.left - containerRect.left,
+                top: rect.top - containerRect.top,
+                bottom: rect.bottom - containerRect.top
+            };
+        }
+
+        function createLine(from, to, isControl = false) {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', from.right);
+            line.setAttribute('y1', from.y);
+            line.setAttribute('x2', to.left);
+            line.setAttribute('y2', to.y);
+            line.setAttribute('class', isControl ? 'control-line' : 'flow-line');
+            svg.appendChild(line);
+            return { x1: from.right, y1: from.y, x2: to.left, y2: to.y };
+        }
+
+        function createFlowParticle(lineCoords, isControl = false) {
+            const particle = document.createElement('div');
+            particle.className = isControl ? 'particle control' : 'particle';
+            diagram.appendChild(particle);
+
+            let progress = Math.random();
+            const speed = isControl ? 0.002 : 0.004;
+
+            function animate() {
+                if (!animationPaused) {
+                    progress += speed;
+                    if (progress > 1) progress = 0;
+
+                    const x = lineCoords.x1 + (lineCoords.x2 - lineCoords.x1) * progress;
+                    const y = lineCoords.y1 + (lineCoords.y2 - lineCoords.y1) * progress;
+
+                    particle.style.left = x + 'px';
+                    particle.style.top = y + 'px';
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+            particles.push(particle);
+        }
+
+        function createProtocolLabel(x, y, text) {
+            const label = document.createElement('div');
+            label.className = 'protocol-label';
+            label.textContent = text;
+            label.style.left = x + 'px';
+            label.style.top = y + 'px';
+            diagram.appendChild(label);
+            protocolLabels.push(label);
+        }
+
+        function initializeFlows() {
+            // Clear existing
+            svg.innerHTML = '';
+            particles.forEach(p => p.remove());
+            protocolLabels.forEach(l => l.remove());
+            particles = [];
+            protocolLabels = [];
+            updateSVGSize();
+
+            // Get positions
+            const vm1 = getElementCenter('vm1');
+            const vm2 = getElementCenter('vm2');
+            const vm3 = getElementCenter('vm3');
+            const clms = getElementCenter('clms');
+            const vpb = getElementCenter('vpb');
+            const tool = getElementCenter('tool');
+
+            // Data Plane: VMs → vPB
+            const lineVm1ToVpb = createLine(vm1, vpb);
+            createFlowParticle(lineVm1ToVpb);
+            createFlowParticle(lineVm1ToVpb);
+            createProtocolLabel((lineVm1ToVpb.x1 + lineVm1ToVpb.x2) / 2 - 30, lineVm1ToVpb.y1 - 15, 'VXLAN:4789');
+
+            const lineVm2ToVpb = createLine(vm2, vpb);
+            createFlowParticle(lineVm2ToVpb);
+            createFlowParticle(lineVm2ToVpb);
+
+            const lineVm3ToVpb = createLine(vm3, vpb);
+            createFlowParticle(lineVm3ToVpb);
+            createFlowParticle(lineVm3ToVpb);
+            createProtocolLabel((lineVm3ToVpb.x1 + lineVm3ToVpb.x2) / 2 - 30, lineVm3ToVpb.y1 + 5, 'VXLAN:4789');
+
+            // Data Plane: vPB → Tool
+            const lineVpbToTool = createLine(vpb, tool);
+            createFlowParticle(lineVpbToTool);
+            createFlowParticle(lineVpbToTool);
+            createFlowParticle(lineVpbToTool);
+            createFlowParticle(lineVpbToTool);
+            createProtocolLabel((lineVpbToTool.x1 + lineVpbToTool.x2) / 2 - 40, lineVpbToTool.y1 - 15, 'Aggregated Traffic');
+
+            // Control Plane: CLMS → VMs
+            const lineClmsToVm1 = createLine(clms, vm1, true);
+            createFlowParticle(lineClmsToVm1, true);
+
+            const lineClmsToVm2 = createLine(clms, vm2, true);
+            createFlowParticle(lineClmsToVm2, true);
+
+            const lineClmsToVm3 = createLine(clms, vm3, true);
+            createFlowParticle(lineClmsToVm3, true);
+        }
+
+        // Tooltip handling
+        document.querySelectorAll('[data-tooltip]').forEach(el => {
+            el.addEventListener('mouseenter', (e) => {
+                const tooltipText = el.getAttribute('data-tooltip');
+                const title = el.querySelector('.node-title').textContent;
+
+                tooltip.querySelector('.tooltip-title').textContent = title;
+                tooltip.querySelector('.tooltip-content').textContent = tooltipText;
+                tooltip.classList.add('visible');
+            });
+
+            el.addEventListener('mousemove', (e) => {
+                tooltip.style.left = (e.pageX + 15) + 'px';
+                tooltip.style.top = (e.pageY + 15) + 'px';
+            });
+
+            el.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('visible');
+            });
+        });
+
+        // Toggle animation pause/play
+        function toggleAnimation() {
+            animationPaused = !animationPaused;
+            const btn = document.querySelector('.control-btn');
+            btn.textContent = animationPaused ? '▶️ Resume Animation' : '⏸️ Pause Animation';
+        }
+
+        // Initialize
+        setTimeout(initializeFlows, 100);
+        window.addEventListener('resize', () => setTimeout(initializeFlows, 100));
+    </script>
+</body>
+</html>
